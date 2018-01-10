@@ -21,7 +21,7 @@
 #endif
 #endif
 
-#define MACTYPE_VERSION		20160830
+#define MACTYPE_VERSION		20170614
 #define MAX_FONT_SETTINGS	16
 #define DEFINE_FS_MEMBER(name, param) \
 	int  Get##name() const { return GetParam(param); } \
@@ -270,7 +270,6 @@ private:
 	int  m_nBolderMode;
 	int  m_nGammaMode;
 	float m_fGammaValue;
-	float m_fGammaValueForDW;
 	float m_fRenderWeight;
 	float m_fContrast;
 	int  m_nMaxHeight;
@@ -289,6 +288,12 @@ private:
 
 	//settings for experimental
 	bool m_bEnableClipBoxFix;
+
+	//settings for directwrite
+	float m_fGammaValueForDW;
+	float m_fContrastForDW;
+	float m_fClearTypeLevelForDW;
+	int	m_nRenderingModeForDW;
 
 	//FTC_Manager_New偵搉偡僷儔儊乕僞
 	int  m_nCacheMaxFaces;
@@ -323,6 +328,9 @@ private:
 
 	//INI偐傜偺撉傒崬傒張棟
 	bool LoadAppSettings(LPCTSTR lpszFile);
+	float FastGetProfileFloat(LPCTSTR lpszSection, LPCTSTR lpszKey, float fDefault);
+	int FastGetProfileInt(LPCTSTR lpszSection, LPCTSTR lpszKey, int nDefault);
+	DWORD FastGetProfileString(LPCTSTR lpszSection, LPCTSTR lpszKey, LPCTSTR lpszDefault, LPTSTR lpszRet, DWORD cch);
 	static bool		_IsFreeTypeProfileSectionExists(LPCTSTR lpszKey, LPCTSTR lpszFile);
 	static LPTSTR _GetPrivateProfileSection    (LPCTSTR lpszSection, LPCTSTR lpszFile);
 	static int    _GetFreeTypeProfileInt       (LPCTSTR lpszKey, int nDefault, LPCTSTR lpszFile);
@@ -332,7 +340,6 @@ private:
 	static float  _GetFreeTypeProfileBoundFloat(LPCTSTR lpszKey, float fDefault, float fMin, float fMax, LPCTSTR lpszFile);
 	static DWORD  _GetFreeTypeProfileString    (LPCTSTR lpszKey, LPCTSTR lpszDefault, LPTSTR lpszRet, DWORD cch, LPCTSTR lpszFile);
 	static int CALLBACK EnumFontFamProc(const LOGFONT* lplf, const TEXTMETRIC* lptm, DWORD FontType, LPARAM lParam);
-	static int	_GetAlternativeProfileName(LPTSTR lpszName, LPCTSTR lpszFile);
 	//template <typename T>
 	static bool AddListFromSection(LPCTSTR lpszSection, LPCTSTR lpszFile, set<wstring> & arr);
 	static bool AddExcludeListFromSection(LPCTSTR lpszSection, LPCTSTR lpszFile, set<wstring> & arr);
@@ -413,7 +420,13 @@ public:
 	int BolderMode() const { return m_nBolderMode; }
 	int GammaMode() const { return m_nGammaMode; }
 	float GammaValue() const { return m_fGammaValue; }
+
+	//DW options
 	float GammaValueForDW() const {	return m_fGammaValueForDW;	}
+	float ContrastForDW() const { return m_fContrastForDW;  }
+	float ClearTypeLevelForDW() const { return m_fClearTypeLevelForDW;  }
+	int RenderingModeForDW() const { return m_nRenderingModeForDW; }
+
 	float RenderWeight() const { return m_fRenderWeight; }
 	float Contrast() const { return m_fContrast; }
 	int MaxHeight() const { return m_nMaxHeight; }
@@ -457,7 +470,6 @@ public:
 	const int* GetTuneTableG() const { return m_nTuneTableG; }
 	const int* GetTuneTableB() const { return m_nTuneTableB; }
 
-	bool LoadSettings();
 	bool LoadSettings(HINSTANCE hModule);
 
 	bool IsFontExcluded(LPCSTR lpFaceName) const;
@@ -545,7 +557,10 @@ private:
 		ATTR_FontLoader,
 		ATTR_FontSubstitute,
 		ATTR_LcdFilterWeight,
-		ATTR_ShadowBuffer
+		ATTR_ShadowBuffer,
+		ATTR_MaxBitmap, 
+		ATTR_DirectWrite, 
+		ATTR_HintSmallFont
 	};
 	typedef CArray<CFontIndividual>		IndividualArray;
 public:
@@ -648,6 +663,12 @@ public:
 			}
 			UpdateLcdFilter();	//刷新过滤器
 			break;
+		case ATTR_HintSmallFont:
+			pSettings->m_bHintSmallFont = !!nValue;
+			break;
+		case ATTR_MaxBitmap:
+			pSettings->m_nBitmapHeight = nValue;
+			break;
 		case ATTR_ShadowBuffer:
 			if (nValue && !IsBadReadPtr((void*)nValue, sizeof(pSettings->m_nShadow)))	//指针有效
 			{
@@ -728,6 +749,10 @@ public:
 			return pSettings->m_FontSettings.GetKerning();
 		case ATTR_GammaMode:
 			return pSettings->m_nGammaMode;
+		case ATTR_HintSmallFont:
+			return pSettings->m_bHintSmallFont;
+		case ATTR_MaxBitmap:
+			return pSettings->m_nBitmapHeight;
 		case ATTR_LcdFilter:
 			return pSettings->m_nLcdFilter;
 		case ATTR_BolderMode:

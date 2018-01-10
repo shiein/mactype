@@ -8,7 +8,7 @@
 #define _WIN32_WINNT _WIN32_WINNT_WIN10
 #define WINVER _WIN32_WINNT_WIN10
 #endif
-#define NTDDI_VERSION NTDDI_WIN10_RS1
+#define NTDDI_VERSION NTDDI_WIN10_RS2
 #define WIN32_LEAN_AND_MEAN 1
 #define UNICODE  1
 #define _UNICODE 1
@@ -115,6 +115,7 @@ public:
 		CS_FONTMAP,
 		CS_OWNEDCS,
 		CS_VIRTMEM,
+		CS_DWRITE,
 	};
 	CCriticalSectionLock(int index=CS_LIBRARY):
 	  m_index(index)
@@ -625,3 +626,4 @@ float _StrToFloat(LPCTSTR pStr, float fDefault)
 void HookD2DDll();
 bool HookD2D1();
 void HookGdiplus();
+void ChangeFileName(LPWSTR lpSrc, int nSize, LPCWSTR lpNewFileName);
